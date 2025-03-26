@@ -1,5 +1,6 @@
 package dev.mitask;
 
+import org.rusherhack.client.api.RusherHackAPI;
 import org.rusherhack.client.api.plugin.Plugin;
 
 public class ElytraFree extends Plugin {
@@ -7,11 +8,8 @@ public class ElytraFree extends Plugin {
 	public void onLoad() {
 		getLogger().info("Loading Elytra4Free...");
 
-		ExampleModule exampleModule = new ExampleModule();
-		RusherHackAPI.getModuleManager().registerFeature(exampleModule);
-
-		ExampleCommand exampleCommand = new ExampleCommand();
-		RusherHackAPI.getCommandManager().registerFeature(exampleCommand);
+		RusherHackAPI.getModuleManager().registerFeature(new ExampleModule());
+		RusherHackAPI.getCommandManager().registerFeature(new ExampleCommand());
 
 		getLogger().info("Elytra4Free loaded!");
 	}
