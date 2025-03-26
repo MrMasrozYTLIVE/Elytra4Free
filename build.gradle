@@ -32,11 +32,6 @@ repositories {
 		//url = "https://maven.rusherhack.org/releases"
 		url = "https://maven.rusherhack.org/snapshots"
 	}
-
-	maven {
-		name = 'ParchmentMC'
-		url = 'https://maven.parchmentmc.org'
-	}
 }
 
 dependencies {
@@ -44,11 +39,7 @@ dependencies {
 	productionRuntime(modImplementation("net.fabricmc:fabric-loader:${project.fabric_loader_version}"))
 	productionRuntime("net.fabricmc:intermediary:${project.minecraft_version}")
 
-	//mojmap + parchment mappings
-	mappings loom.layered() {
-		officialMojangMappings()
-		parchment("org.parchmentmc.data:parchment-${project.parchment_version}@zip")
-	}
+	mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
 
 	//rusherhack api
 	rusherhackApi "org.rusherhack:rusherhack-api:$minecraft_version-SNAPSHOT"

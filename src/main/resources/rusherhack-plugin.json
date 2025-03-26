@@ -1,11 +1,12 @@
 {
-  "Plugin-Class": "org.example.ExamplePlugin",
+  "Plugin-Class": "dev.mitask.ElytraFree",
   "Name": "${project.plugin_name}",
   "Version": "${project.plugin_version}",
   "Description": "Example rusherhack plugin",
-  "URL": "https://github.com/RusherDevelopment/example-plugin",
+  "URL": "https://github.com/MrMasrozYTLIVE/Elytra4Free",
   "Authors": [
-    "John200410"
+    "MiTask",
+    "AdyTech99"
   ],
   "Minecraft-Versions": [
     "${project.minecraft_version}"
