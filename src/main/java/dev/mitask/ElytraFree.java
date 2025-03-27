@@ -8,7 +8,7 @@ public class ElytraFree extends Plugin {
 	public void onLoad() {
 		getLogger().info("Loading Elytra4Free...");
 
-		RusherHackAPI.getModuleManager().registerFeature(new ExampleModule());
+		RusherHackAPI.getModuleManager().registerFeature(new ElytraFreeModule());
 		RusherHackAPI.getCommandManager().registerFeature(new ExampleCommand());
 
 		getLogger().info("Elytra4Free loaded!");

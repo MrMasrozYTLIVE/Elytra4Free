@@ -1,0 +1,212 @@
+package dev.mitask;
+
+import com.mojang.blaze3d.platform.InputConstants;
+import dev.mitask.autopilot.Autopilot;
+import dev.mitask.autopilot.CollisionDetectionUtil;
+import dev.mitask.config.AutomaticElytraConfig;
+import dev.mitask.hud.HUD;
+import dev.mitask.hud.HUDHelper;
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
+import net.minecraft.ChatFormatting;
+import net.minecraft.client.KeyMapping;
+import net.minecraft.client.Minecraft;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.phys.Vec3;
+import org.lwjgl.glfw.GLFW;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.Random;
+
+@Environment(EnvType.CLIENT)
+public class AutomaticInfiniteElytraClient implements net.fabricmc.api.ClientModInitializer {
+
+    public static final String MOD_ID = "autoinfelytra";
+    public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
+
+    private static KeyMapping keyBinding;
+    public static AutomaticInfiniteElytraClient instance;
+
+    private static boolean lastPressed = false;
+
+    public static final double DEFAULT_PULL_UP_ANGLE = -46.633514;
+    public static final double DEFAULT_PULL_DOWN_ANGLE = 37.19872;
+    public static final double DEFAULT_PULL_UP_MIN_VELOCITY = 1.9102669;
+    public static final double DEFAULT_PULL_DOWN_MAX_VELOCITY = 2.3250866;
+    public static final double DEFAULT_PULL_UP_SPEED = 2.1605124 * 3;
+    public static final double DEFAULT_PULL_DOWN_SPEED = 0.20545267 * 3;
+
+    // Flight parameters
+    public static double pullUpAngle = DEFAULT_PULL_UP_ANGLE;
+    public static double pullDownAngle = DEFAULT_PULL_DOWN_ANGLE;
+    public static double pullUpMinVelocity = DEFAULT_PULL_UP_MIN_VELOCITY;
+    public static double pullDownMaxVelocity = DEFAULT_PULL_DOWN_MAX_VELOCITY;
+    public static double pullUpSpeed = DEFAULT_PULL_UP_SPEED;
+    public static double pullDownSpeed = DEFAULT_PULL_DOWN_SPEED;
+    public static final int rotationAmount = 180/CollisionDetectionUtil.scanAheadTicks;
+    public static int rotationStage = 0;
+
+    private static Minecraft minecraftClient;
+
+    public static boolean showHud;
+    public static boolean autoFlight;
+
+    private static Vec3 previousPosition;
+    private static double currentVelocity;
+
+    public static boolean isDescending;
+    public static boolean pullUp;
+    public static boolean pullDown;
+    public static boolean rotating = false;
+
+
+
+    @Override
+    public void onInitializeClient() {
+//        AutomaticElytraConfig.HANDLER.load();
+        LOGGER.info("Sky's the beginning!");
+
+//        MusicPlayer.EMBARK = MusicHelper.registerSoundEvent("embark_on_a_new_journey");
+//        MusicPlayer.FEELING = MusicHelper.registerSoundEvent("a_feeling_like_never_before");
+//        MusicPlayer.SWEEPING_CLOUDS_SOUND = MusicHelper.registerSoundEvent("sweeping_through_the_clouds");
+//        MusicPlayer.SUNSHINE = MusicHelper.registerSoundEvent("the_first_ray_of_the_sunshine");
+//        MusicPlayer.HOMESICK = MusicHelper.registerSoundEvent("homesick");
+
+
+        Commands.registerCommands();
+        Autopilot.init();
+        HUDHelper.init();
+
+        keyBinding = new KeyMapping(
+                "key.elytraautoflight.toggle", // The translation key of the keybinding's name
+                InputConstants.Type.KEYSYM, // The type of the keybinding, KEYSYM for keyboard, MOUSE for mouse.
+                GLFW.GLFW_KEY_RIGHT_ALT, // The keycode of the key
+                "text.elytraautoflight.title" // The translation key of the keybinding's category.
+        );
+
+        KeyBindingHelper.registerKeyBinding(keyBinding);
+
+        lastPressed = false;
+        ClientTickEvents.END_CLIENT_TICK.register(e -> {
+            onTick();
+            Autopilot.tick();
+        });
+//        HudRenderCallback.EVENT.register(HUD::drawHUD);
+
+        AutomaticInfiniteElytraClient.instance = this;
+        LOGGER.info("I believe I can fly...");
+    }
+
+    public static void rotatePlayer(Minecraft minecraftClient){
+        assert minecraftClient.player != null;
+        Random random = new Random();
+        int randomPitch = random.nextInt(2) - 1;
+        if(rotating) {
+            minecraftClient.player.setXRot((float) (minecraftClient.player.getXRot() + rotationAmount + (Math.random() * 2)));
+            minecraftClient.player.setYRot(minecraftClient.player.getYRot() + randomPitch);
+            minecraftClient.player.displayClientMessage(Component.literal("Taking evasive action! ").withStyle(ChatFormatting.RED), true);
+            autoFlight = false;
+            rotationStage++;
+            minecraftClient.player.stopFallFlying();
+        }
+        if(rotationStage >= CollisionDetectionUtil.scanAheadTicks){
+            rotating = false;
+            rotationStage = 0;
+            if(minecraftClient.player.isFallFlying()) minecraftClient.player.startFallFlying();
+        }
+    }
+
+    private static void onTick() {
+        if(minecraftClient == null) minecraftClient = Minecraft.getInstance();
+        if (minecraftClient.player != null) {
+            rotatePlayer(minecraftClient);
+            if (minecraftClient == null) minecraftClient = Minecraft.getInstance();
+            if (minecraftClient.player.isFallFlying()) showHud = true;
+                else {
+                    showHud = false;
+                    autoFlight = false;
+                }
+//                if (minecraftClient.getDebugOverlay().shouldShowDebugHud())
+//                    showHud = false;
+
+            if (!lastPressed /*&& keyBinding.isPressed()*/) {
+                if (minecraftClient.player.isFallFlying()) {
+                    // If the player is flying an elytra, we start the auto flight
+                    autoFlight = !autoFlight;
+                    if (autoFlight) isDescending = true;
+                    else Autopilot.stop();
+                } else {
+                    minecraftClient.player.displayClientMessage(Component.literal("[Automatic Infinite Elytra] ").withStyle(ChatFormatting.AQUA).append(Component.literal("You need to be flying!")).withStyle(ChatFormatting.RED), false); // Send a message to the player
+                }
+            }
+//            lastPressed = keyBinding.isPressed();
+
+
+            if (autoFlight) {
+                assert minecraftClient.level != null;
+//                if (AutomaticElytraConfig.HANDLER.instance().anti_collision)
+                    CollisionDetectionUtil.cancelFlightIfObstacleDetected(minecraftClient.player, minecraftClient.level);
+//                if (HUDHelper.getAltitude() >= AutomaticElytraConfig.HANDLER.instance().max_altitude)
+//                    isDescending = true;
+                if (isDescending) {
+                    pullUp = false;
+                    pullDown = true;
+//                    if (currentVelocity >= pullDownMaxVelocity && AutomaticElytraConfig.HANDLER.instance().max_altitude >= HUDHelper.getAltitude()) {
+                        isDescending = false;
+                        pullDown = false;
+                        pullUp = true;
+//                    }
+                } else {
+                    pullUp = true;
+                    pullDown = false;
+                    if (currentVelocity <= pullUpMinVelocity) {
+                        isDescending = true;
+                        pullDown = true;
+                        pullUp = false;
+                    }
+                }
+
+                if (pullUp) {
+                    minecraftClient.player.xRotO -= pullUpSpeed;
+                    if (minecraftClient.player.xRotO <= pullUpAngle) minecraftClient.player.xRotO = (float) pullUpAngle;
+                }
+
+                if (pullDown) {
+                    minecraftClient.player.xRotO += pullDownSpeed;
+                    if (minecraftClient.player.xRotO >= pullDownAngle)
+                        minecraftClient.player.xRotO = (float) pullDownAngle;
+                }
+            } else {
+                pullUp = false;
+                pullDown = false;
+//                HUD.hudColor = HUD.GREEN_HUD_COLOR;
+            }
+
+
+//            HUD.tick();
+            computeVelocity();
+        }
+        else{
+            showHud = false;
+            autoFlight = false;
+            rotating = false;
+        }
+    }
+
+    private static void computeVelocity()
+    {
+        Vec3 newPosition = minecraftClient.player.position();
+        if (previousPosition == null)
+            previousPosition = newPosition;
+        Vec3 difference = new Vec3(newPosition.x - previousPosition.x, newPosition.y - previousPosition.y, newPosition.z - previousPosition.z);
+        previousPosition = newPosition;
+        currentVelocity = difference.length();
+    }
+
+    public static double getCurrentVelocity(){
+        return currentVelocity;
+    }
+}
